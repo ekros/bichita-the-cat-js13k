@@ -1,0 +1,17 @@
+{
+  "name": "blacky-the-cat-js13k",
+  "version": "1.0.0",
+  "main": "game.js",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "littlejsengine": "^1.11.13"
+  },
+  "devDependencies": {
+    "archiver": "^7.0.1"
+  }
+}
