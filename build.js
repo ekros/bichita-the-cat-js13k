@@ -6,9 +6,10 @@
 
 'use strict';
 
-const PROGRAM_TITLE = 'Little JS Starter Project';
+const PROGRAM_TITLE = 'Bichita the cat';
 const PROGRAM_NAME = 'game';
 const BUILD_FOLDER = 'build';
+const IMAGE_FOLDER = 'images';
 const USE_ROADROLLER = false; // enable for extra compression
 const sourceFiles =
 [
@@ -18,7 +19,11 @@ const sourceFiles =
 ];
 const dataFiles =
 [
-    // 'tiles.png',
+    'bichita-posing.webp',
+    'bichita-walk-1.webp',
+    'dragging-cat.webp',
+    'silver-tabby-cat.webp',
+    'white-cat.webp',
     // add your game's data files here
 ];
 
@@ -34,10 +39,11 @@ const child_process = require('node:child_process');
 fs.rmSync(BUILD_FOLDER, { recursive: true, force: true });
 fs.rmSync(`${PROGRAM_NAME}.zip`, { force: true });
 fs.mkdirSync(BUILD_FOLDER);
+fs.mkdirSync(`${BUILD_FOLDER}/${IMAGE_FOLDER}`);
 
 // copy data files
 for(const file of dataFiles)
-    fs.copyFileSync(file, `${BUILD_FOLDER}/${file}`);
+    fs.copyFileSync(`${IMAGE_FOLDER}/${file}`, `${BUILD_FOLDER}/${IMAGE_FOLDER}/${file}`);
 
 Build
 (
@@ -133,7 +139,7 @@ function zipBuildStep(filename)
     // Add the build files to the zip
     archive.file(`${BUILD_FOLDER}/index.html`, { name: 'index.html' });
     for (const file of dataFiles) {
-        archive.file(`${BUILD_FOLDER}/${file}`, { name: file });
+        archive.file(`${BUILD_FOLDER}/${IMAGE_FOLDER}/${file}`, { name: file });
     }
 
     archive.finalize();
