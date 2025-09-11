@@ -3,6 +3,13 @@
     Created by Eric Ros for the 2025' js13kgames competition
 */
 
+/**
+ * @preserve
+ * @suppress {checkTypes,uselessCode,missingProperties}
+ */
+
+/** @dict */
+
 // show the LittleJS splash screen
 setShowSplashScreen(false);
 // setCanvasPixelated(true); // ? can be this useful? 
@@ -30,16 +37,38 @@ const GAME_STATE = {
     RUNNING: 0,
     WIN: 1
 };
+const BICHITA_SCALE = 0.7;
 
 // sprites
 const sprites = {};
+const SPRITE_SIZE = 32;
+const SPRITE_MAP = {
+    bichita: {
+        walk: [0, 0],
+        pose: [32, 0],
+        drag: [64, 0]
+    },
+    white: {
+        walk: [0, 32],
+        pose: [32, 32]
+    },
+    tabby: {
+        walk: [0, 64],
+        pose: [32, 64]
+    },
+    orange: {
+        walk: [0, 96],
+        pose: [32, 96]
+    }
+};
 
 // sound effects
-const sound_click = new Sound([1,.5]);
+// const sound_click = new Sound([1,.5]);
 
-const catTypes = ["white", "silver-tabby", "orange"];
+const catTypes = ["white", "tabby", "orange"];
 
 // Entities
+/** @constructor */
 class Cat {
     constructor(yPos, xPos, speed, type) {
         this.y = Math.floor(Math.max(0, Math.random() * mainCanvasSize.y - 40)); // make sure there is no vertical overflow
@@ -50,6 +79,7 @@ class Cat {
     }
 }
 
+/** @constructor */
 class Bichita extends Cat {
     constructor() {
         super();
@@ -66,6 +96,7 @@ class Bichita extends Cat {
     }
 }
 
+/** @constructor */
 class Mother extends Cat {
     constructor() {
         super();
@@ -100,16 +131,8 @@ const initCats = numberOfCats => {
 }
 
 const initSprites = () => {
-    sprites.bichitaWalk = textureInfos[0].image;
-    sprites.silverTabbyCat = textureInfos[1].image;
-    sprites.bichitaPosing = textureInfos[2].image;
-    sprites.bichitaDragging = textureInfos[3].image;
-    sprites.grass = textureInfos[4].image;
-    sprites.orangeCatWalk = textureInfos[5].image;
-    sprites.orangeCatPosing = textureInfos[6].image;
-    sprites.silverTabbyPosing = textureInfos[7].image;
-    sprites.whiteCatWalk = textureInfos[8].image;
-    sprites.whiteCatPosing = textureInfos[9].image;
+    sprites.atlas = textureInfos[0].image;
+    sprites.grass = textureInfos[1].image;
 }
 
 const checkMouseCollisionWithBichita = pos => {
@@ -138,22 +161,17 @@ const checkMouseCollisionWithMother = pos => {
     return collided;
 }
 
-const getCatImage = type => {
-    const spriteMap = {
-        "white": {
-            walk: sprites.whiteCatWalk,
-            posing: sprites.whiteCatPosing
-        },
-        "silver-tabby": { 
-            walk: sprites.silverTabbyCat,
-            posing: sprites.silverTabbyPosing,
-        },
-        "orange": {
-            walk: sprites.orangeCatWalk,
-            posing: sprites.orangeCatPosing
-        }
+const drawSprite = (x, y, spriteX, spriteY, flip = false, scale = 1) => {
+    mainContext.save();
+    if (flip) {
+        mainContext.scale(-1, 1);
+        mainContext.drawImage(sprites.atlas, spriteX, spriteY, SPRITE_SIZE, SPRITE_SIZE, 
+            -x - SPRITE_SIZE, y, SPRITE_SIZE * scale, SPRITE_SIZE * scale);
+    } else {
+        mainContext.drawImage(sprites.atlas, spriteX, spriteY, SPRITE_SIZE, SPRITE_SIZE, 
+            x, y, SPRITE_SIZE * scale, SPRITE_SIZE * scale);
     }
-    return spriteMap[type];
+    mainContext.restore();
 }
 
 const getBichitaInstance = () => {
@@ -205,7 +223,7 @@ function gameUpdate()
             if (mouseWasPressed(0))
             {
                 // play sound when mouse is pressed
-                sound_click.play(mousePos);
+                // sound_click.play(mousePos);
         
                 // detect click with Bichita
                 if (checkMouseCollisionWithBichita(mousePos)) {
@@ -231,9 +249,13 @@ function gameUpdate()
                     cat.speed = -cat.speed;
                 }
             }
-            // small change of state change
+            // small chance of state change
             if (Math.random() < 0.001) {
                 cat.isWalking = !cat.isWalking;
+            }
+            // small chance of direction change
+            if (Math.random() < 0.001) {
+                cat.speed = -cat.speed;
             }
         });
         break;
@@ -267,59 +289,25 @@ function gameRender()
     cats.forEach(cat => {
         if (cat.constructor.name === "Bichita") {
             if (cat.isDragging) {
-                const naturalWidth = sprites.bichitaWalk.width;
-                const naturalHeight = sprites.bichitaWalk.height;
-                const scaledWidth = naturalWidth * 0.7;
-                const scaledHeight = naturalHeight * 0.7;
-                
-                mainContext.save();
-                
                 const coords = worldToScreen(mousePos);
-                mainContext.drawImage(sprites.bichitaDragging, coords.x, coords.y, scaledWidth, scaledHeight);
-                mainContext.restore();
+                drawSprite(coords.x, coords.y, ...SPRITE_MAP.bichita.drag, false, BICHITA_SCALE);
             } else {
-                const naturalWidth = sprites.bichitaWalk.width;
-                const naturalHeight = sprites.bichitaWalk.height;
-                const scaledWidth = naturalWidth * 0.7;
-                const scaledHeight = naturalHeight * 0.7;
-                
-                mainContext.save();
                 if (!cat.isWalking) {
-                    mainContext.drawImage(sprites.bichitaPosing, cat.x, cat.y, scaledWidth, scaledHeight);
-                } else if (cat.speed < 0) {
-                    mainContext.scale(-1, 1);
-                    mainContext.drawImage(sprites.bichitaWalk, -cat.x - scaledWidth, cat.y, scaledWidth, scaledHeight);
+                    drawSprite(cat.x, cat.y, ...SPRITE_MAP.bichita.pose, false, BICHITA_SCALE);
                 } else {
-                    mainContext.drawImage(sprites.bichitaWalk, cat.x, cat.y, scaledWidth, scaledHeight);
+                    drawSprite(cat.x, cat.y, ...SPRITE_MAP.bichita.walk, cat.speed < 0, BICHITA_SCALE);
                 }
-                mainContext.restore();
             }
         } else if (cat.constructor.name === "Mother") {
-            mainContext.save();
-            if (cat.speed < 0) {
-                mainContext.scale(-1, 1);
-                mainContext.drawImage(sprites.bichitaWalk, -cat.x - sprites.bichitaWalk.width, cat.y);
-            } else {
-                mainContext.drawImage(sprites.bichitaWalk, cat.x, cat.y);
-            }
-            mainContext.restore();
+            // Mother uses same sprites as Bichita
+            drawSprite(cat.x, cat.y, ...SPRITE_MAP.bichita.walk, cat.speed < 0);
         } else {
-            const img = getCatImage(cat.type);
-            mainContext.save();
+            const spriteCoords = SPRITE_MAP[cat.type] || SPRITE_MAP.white;
             if (!cat.isWalking) {
-                if (cat.speed < 0) {
-                    mainContext.scale(-1, 1);
-                    mainContext.drawImage(img.posing, -cat.x - img.posing.width, cat.y);
-                } else {
-                    mainContext.drawImage(img.posing, cat.x, cat.y);
-                }
-            } else if (cat.speed < 0) {
-                mainContext.scale(-1, 1);
-                mainContext.drawImage(img.walk, -cat.x - img.walk.width, cat.y);
+                drawSprite(cat.x, cat.y, ...spriteCoords.pose, cat.speed < 0);
             } else {
-                mainContext.drawImage(img.walk, cat.x, cat.y);
+                drawSprite(cat.x, cat.y, ...spriteCoords.walk, cat.speed < 0);
             }
-            mainContext.restore();
         }
     });
 }
@@ -358,14 +346,6 @@ function gameRenderPost()
 // Startup LittleJS Engine
 engineInit(gameInit, gameUpdate, gameUpdatePost, gameRender, gameRenderPost, 
     [
-        'images/bichita-walk-1.webp', 
-        'images/silver-tabby-cat.webp', 
-        'images/bichita-posing.webp', 
-        'images/dragging-cat.webp', 
-        'images/grass.webp',
-        'images/orange-cat-walking.webp',
-        'images/orange-cat-posing.webp',
-        'images/silver-tabby-posing.webp',
-        'images/black-white-walking.webp',
-        'images/black-white-posing.webp',
+        'sprites.webp',
+        'grass.webp'
     ]);

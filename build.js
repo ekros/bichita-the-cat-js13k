@@ -9,28 +9,28 @@
 const PROGRAM_TITLE = 'Bichita the cat';
 const PROGRAM_NAME = 'game';
 const BUILD_FOLDER = 'build';
-const IMAGE_FOLDER = 'images';
-const USE_ROADROLLER = false; // enable for extra compression
+const USE_ROADROLLER = true; // enable for extra compression
 const sourceFiles =
 [
-    'node_modules/littlejsengine/dist/littlejs.release.js',
+    'littlejs.custom.js',
     'game.js',
     // add your game's files here
 ];
 const dataFiles =
 [
-    'bichita-posing.webp',
-    'bichita-walk-1.webp',
-    'dragging-cat.webp',
-    'silver-tabby-cat.webp',
-    'white-cat.webp',
-    // add your game's data files here
+    'sprites.webp',
+    'grass.webp'
 ];
 
 console.log(`Building ${PROGRAM_NAME}...`);
 const startTime = Date.now();
 const fs = require('node:fs');
 const child_process = require('node:child_process');
+
+// Polyfill structuredClone if running in older node versions
+if (typeof structuredClone === 'undefined') {
+    global.structuredClone = obj => JSON.parse(JSON.stringify(obj));
+}
 
 // rebuild engine
 //child_process.execSync(`npm run build`, { stdio: 'inherit' });
@@ -39,19 +39,18 @@ const child_process = require('node:child_process');
 fs.rmSync(BUILD_FOLDER, { recursive: true, force: true });
 fs.rmSync(`${PROGRAM_NAME}.zip`, { force: true });
 fs.mkdirSync(BUILD_FOLDER);
-fs.mkdirSync(`${BUILD_FOLDER}/${IMAGE_FOLDER}`);
 
 // copy data files
 for(const file of dataFiles)
-    fs.copyFileSync(`${IMAGE_FOLDER}/${file}`, `${BUILD_FOLDER}/${IMAGE_FOLDER}/${file}`);
+    fs.copyFileSync(`${file}`, `${BUILD_FOLDER}/${file}`);
 
 Build
 (
     `${BUILD_FOLDER}/index.js`,
     sourceFiles,
     USE_ROADROLLER ? 
-        [closureCompilerStep, uglifyBuildStep, roadrollerBuildStep, htmlBuildStep, zipBuildStep] :
-        [closureCompilerStep, uglifyBuildStep, htmlBuildStep, zipBuildStep]
+        [terserStep, roadrollerBuildStep, htmlBuildStep, zipBuildStep] :
+        [terserStep, htmlBuildStep, zipBuildStep]
 );
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -73,15 +72,10 @@ function Build(outputFile, files=[], buildSteps=[])
         buildStep(outputFile);
 }
 
-function closureCompilerStep(filename)
+function terserStep(filename)
 {
-    console.log(`Running closure compiler...`);
-
-    // use closer compiler to minify the code
-    const filenameTemp = filename + '.tmp';
-    fs.copyFileSync(filename, filenameTemp);
-    child_process.execSync(`npx google-closure-compiler --js=${filenameTemp} --js_output_file=${filename} --compilation_level=ADVANCED --warning_level=VERBOSE --jscomp_off=* --assume_function_wrapper`, {stdio: 'inherit'});
-    fs.rmSync(filenameTemp);
+    console.log(`Running Terser...`);
+    child_process.execSync(`npx terser ${filename} --compress toplevel=false,pure_getters=true,passes=2 --mangle reserved=['engineInit','Cat','Bichita','Mother','x','y','speed','type','isWalking','isDragging','isBichita','isMother','constructor','prototype'] --output ${filename}`, {stdio: 'inherit'});
 };
 
 function uglifyBuildStep(filename)
@@ -104,11 +98,13 @@ function htmlBuildStep(filename)
     let buffer = '<!DOCTYPE html>';
     buffer += '<head>';
     buffer += `<title>${PROGRAM_TITLE}</title>`;
+    buffer += '<link rel=icon type=image/png href=favicon.png>';
     buffer += '</head>';
     buffer += '<body>';
     buffer += '<script>';
     buffer += fs.readFileSync(filename) + '\n';
     buffer += '</script>';
+    buffer += '</body>';
 
     // output html file
     fs.writeFileSync(`${BUILD_FOLDER}/index.html`, buffer, {flag: 'w+'});
@@ -139,7 +135,7 @@ function zipBuildStep(filename)
     // Add the build files to the zip
     archive.file(`${BUILD_FOLDER}/index.html`, { name: 'index.html' });
     for (const file of dataFiles) {
-        archive.file(`${BUILD_FOLDER}/${IMAGE_FOLDER}/${file}`, { name: file });
+        archive.file(`${BUILD_FOLDER}/${file}`, { name: file });
     }
 
     archive.finalize();

@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "game.js",
   "scripts": {
-    "build": "node build.js"
+    "build": "node build.js",
+    "create-atlas": "node create-atlas.js"
   },
   "author": "",
   "license": "ISC",
@@ -12,6 +13,9 @@
     "littlejsengine": "^1.11.13"
   },
   "devDependencies": {
-    "archiver": "^7.0.1"
+    "archiver": "^7.0.1",
+    "canvas": "^3.2.0",
+    "sharp": "^0.34.3",
+    "terser": "^5.44.0"
   }
 }
