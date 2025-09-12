@@ -1,4 +1,4 @@
-# Bichita the Cat
+# Bichita the Cat <img src='bichita-walk-1.webp'/>
 
 This is a game for the js13kGames 2025 competition.
 
