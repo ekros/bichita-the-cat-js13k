@@ -4,7 +4,7 @@ This is a game for the js13kGames 2025 competition.
 
 A short, casual and cozy game about bringing a kitten back to her mother.
 
-The mechanics are easy. Find the little black cat and drag it with his mother.
+The mechanics are easy. Find the little black cat and move it using the mouse / touch.
 
 There is a LOT of other cats in the screen... will find it?
 
