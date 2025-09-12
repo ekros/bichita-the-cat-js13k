@@ -12,7 +12,6 @@
 
 // show the LittleJS splash screen
 setShowSplashScreen(false);
-// setCanvasPixelated(true); // ? can be this useful? 
 
 // constants
 const CAT_DENSITY_SETUPS = {
@@ -30,9 +29,15 @@ const CAT_DENSITY_SETUPS = {
     },
     extreme: {
         quantity: 800,
+    },
+    ultra: {
+        quantity: 1000
+    },
+    ultimate: {
+        quantity: 2000
     }
 }
-const INITIAL_SETUP = CAT_DENSITY_SETUPS.high;
+const INITIAL_SETUP = CAT_DENSITY_SETUPS.lowest;
 const GAME_STATE = {
     RUNNING: 0,
     WIN: 1
@@ -41,29 +46,26 @@ const BICHITA_SCALE = 0.7;
 
 // sprites
 const sprites = {};
-const SPRITE_SIZE = 32;
+const SPRITE_SIZE = 24;
 const SPRITE_MAP = {
     bichita: {
         walk: [0, 0],
-        pose: [32, 0],
-        drag: [64, 0]
+        pose: [24, 0],
+        drag: [24, 0]  // Reuse the pose sprite coordinates for dragging
     },
     white: {
-        walk: [0, 32],
-        pose: [32, 32]
+        walk: [0, 24],
+        pose: [24, 24]
     },
     tabby: {
-        walk: [0, 64],
-        pose: [32, 64]
+        walk: [0, 48],
+        pose: [24, 48]
     },
     orange: {
-        walk: [0, 96],
-        pose: [32, 96]
+        walk: [0, 72],
+        pose: [24, 72]
     }
 };
-
-// sound effects
-// const sound_click = new Sound([1,.5]);
 
 const catTypes = ["white", "tabby", "orange"];
 
@@ -141,7 +143,7 @@ const checkMouseCollisionWithBichita = pos => {
     const newCats = structuredClone(cats);
     const reversedCats = newCats.reverse(); // the ones in the front go first
     reversedCats.forEach(rc => {
-        if (rc.isBichita && Math.abs(rc.x - coords.x) < 20 && Math.abs(rc.y - coords.y) < 20) {
+        if (rc.isBichita && Math.abs(rc.x - coords.x) < 15 && Math.abs(rc.y - coords.y) < 15) {
             collided = true;
         }
     });
@@ -154,7 +156,20 @@ const checkMouseCollisionWithMother = pos => {
         const newCats = structuredClone(cats);
         const reversedCats = newCats.reverse(); // the ones in the front go first
         reversedCats.forEach(rc => {
-            if (rc.isMother && Math.abs(rc.x - coords.x) < 24 && Math.abs(rc.y - coords.y) < 24) {
+            if (rc.isMother && Math.abs(rc.x - coords.x) < 18 && Math.abs(rc.y - coords.y) < 18) {
+                collided = true;
+            }
+        });
+    return collided;
+}
+
+const checkMouseCollisionWithOtherCats = pos => {
+        let collided = false;
+        const coords = worldToScreen(pos);
+        const newCats = structuredClone(cats);
+        const reversedCats = newCats.reverse(); // the ones in the front go first
+        reversedCats.forEach(rc => {
+            if (!rc.isMother && !rc.isBichita && Math.abs(rc.x - coords.x) < 18 && Math.abs(rc.y - coords.y) < 18) {
                 collided = true;
             }
         });
@@ -182,12 +197,13 @@ const getMotherInstance = () => {
     return cats.find(cat => cat.constructor.name === "Mother");
 }
 
-const endScene = (finalPos) => {
+const endScene = () => {
     // remove all cats from scene except Bichita and her mother
+    const bichita = getBichitaInstance();
+    const mother = getMotherInstance();
     cats = cats.filter(cat => cat.constructor.name === "Bichita" || cat.constructor.name === "Mother");
-    const coords = worldToScreen(finalPos);
-    getBichitaInstance().x = coords.x;
-    getBichitaInstance().y = coords.y;
+    bichita.x = mother.x - 15;
+    bichita.y = mother.y + 8;
 }
 
 const startCatTalking = (text, pos, ttl = 2000) => {
@@ -201,12 +217,49 @@ const startCatTalking = (text, pos, ttl = 2000) => {
     }, ttl);
 }
 
+const setGrabbingPointer = enable => {
+    if (enable) {
+        document.getElementsByTagName("body")[0].style.cursor = "grabbing";
+    } else {
+        document.getElementsByTagName("body")[0].style.cursor = "grab";
+    }
+}
+
+const getInitialCats = () => {
+    const gamesPlayed = localStorage.getItem("gamesPlayed");
+    const difficultyMap = {
+        "1": CAT_DENSITY_SETUPS.lowest,
+        "2": CAT_DENSITY_SETUPS.low,
+        "3": CAT_DENSITY_SETUPS.medium,
+        "4": CAT_DENSITY_SETUPS.high,
+        "5": CAT_DENSITY_SETUPS.extreme,
+        "6": CAT_DENSITY_SETUPS.ultra
+    }
+    return difficultyMap[gamesPlayed] || CAT_DENSITY_SETUPS.ultimate;
+}
+
+const incrementGamesPlayed = () => {
+    localStorage.setItem("gamesPlayed", Number(localStorage.getItem("gamesPlayed")) + 1);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 function gameInit()
 {
+    // initialize gamesPlayed
+    if (!localStorage.getItem("gamesPlayed")) {
+        localStorage.setItem("gamesPlayed", 1);
+    }
     mainCanvas.style.background = "white";
-    initCats(INITIAL_SETUP.quantity);
+    initCats(getInitialCats().quantity);
     initSprites();
+    // hint: every 30 seconds there is a chance of a short meow
+    setInterval(() => {
+        if (Math.random() < 0.5) {
+            const pos = screenToWorld(vec2(getBichitaInstance().x, getBichitaInstance().y - 20));
+            startCatTalking("Meow", pos, 2000);
+        }
+    }, 30000);
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -215,29 +268,33 @@ function gameUpdate()
     switch (gameState) {
         case GAME_STATE.RUNNING:
             if (!motherGaveGreetings) {
-                // const mother = getMotherInstance();
                 const pos = screenToWorld(vec2(getMotherInstance().x, getMotherInstance().y - 20));
                 startCatTalking("Please, bring my baby back!", pos, 5000);
                 motherGaveGreetings = true;
             }
             if (mouseWasPressed(0))
             {
-                // play sound when mouse is pressed
-                // sound_click.play(mousePos);
-        
+                setGrabbingPointer(true);
                 // detect click with Bichita
                 if (checkMouseCollisionWithBichita(mousePos)) {
                     getBichitaInstance().startDragging();
                     startCatTalking("Meow!", mousePos);
                 } else if (checkMouseCollisionWithMother(mousePos)) {
                     startCatTalking("Please, find Bichita.", mousePos);
+                } else if (checkMouseCollisionWithOtherCats(mousePos)) {
+                    startCatTalking("Prrr", mousePos);
                 }
             }
             if (mouseWasReleased(0)) {
+                setGrabbingPointer(false);
                 // check if we are dropping near mother
                 if (checkMouseCollisionWithMother(mousePos) && cats.find(cat => cat.constructor.name === "Bichita" && cat.isDragging)) {
                     gameState = GAME_STATE.WIN;
-                    endScene(mousePos);
+                    incrementGamesPlayed();
+                    endScene();
+                } else if (getBichitaInstance().isDragging) {
+                    const pos = screenToWorld(vec2(getBichitaInstance().x, getBichitaInstance().y - 20));
+                    startCatTalking("Not my mother...", pos);
                 }
                 getBichitaInstance().endDragging();
             }
@@ -334,6 +391,7 @@ function gameRenderPost()
     // draw cat talking
     if (catTalking) {
         const pos = worldToScreen(catTalking.pos);
+        pos.y -= 10;
         // float effect
         catTalking.pos.y += 0.001;
         drawTextScreen(catTalking.text,

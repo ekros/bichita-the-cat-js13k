@@ -19,7 +19,8 @@ const sourceFiles =
 const dataFiles =
 [
     'sprites.webp',
-    'grass.webp'
+    'grass.webp',
+    'favicon.png'
 ];
 
 console.log(`Building ${PROGRAM_NAME}...`);
@@ -75,13 +76,7 @@ function Build(outputFile, files=[], buildSteps=[])
 function terserStep(filename)
 {
     console.log(`Running Terser...`);
-    child_process.execSync(`npx terser ${filename} --compress toplevel=false,pure_getters=true,passes=2 --mangle reserved=['engineInit','Cat','Bichita','Mother','x','y','speed','type','isWalking','isDragging','isBichita','isMother','constructor','prototype'] --output ${filename}`, {stdio: 'inherit'});
-};
-
-function uglifyBuildStep(filename)
-{
-    console.log(`Running uglify...`);
-    child_process.execSync(`npx uglify-js ${filename} -c -m -o ${filename}`, {stdio: 'inherit'});
+    child_process.execSync(`npx terser ${filename} --compress toplevel=true,pure_getters=true,passes=2 --mangle reserved=['engineInit','Cat','Bichita','Mother','x','y','speed','type','isWalking','isDragging','isBichita','isMother','constructor','prototype'] --output ${filename}`, {stdio: 'inherit'});
 };
 
 function roadrollerBuildStep(filename)

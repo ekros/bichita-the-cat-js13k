@@ -11,10 +11,10 @@ async function loadWebpAsImage(filename) {
 }
 
 async function createAtlas() {
-    // Create a 128x128 canvas
-    const atlasWidth = 128;
-    const atlasHeight = 128;
-    const spriteSize = 32;
+    // Create a 96x96 canvas (75% of original size)
+    const atlasWidth = 96;
+    const atlasHeight = 96;
+    const spriteSize = 24;
     
     const outputCanvas = createCanvas(atlasWidth, atlasHeight);
     const ctx = outputCanvas.getContext('2d');
@@ -23,7 +23,6 @@ async function createAtlas() {
     const images = {
         bichitaWalk: await loadWebpAsImage('bichita-walk-1.webp'),
         bichitaPose: await loadWebpAsImage('bichita-posing.webp'),
-        bichitaDrag: await loadWebpAsImage('dragging-cat.webp'),
         whiteWalk: await loadWebpAsImage('black-white-walking.webp'),
         whitePose: await loadWebpAsImage('black-white-posing.webp'),
         tabbyWalk: await loadWebpAsImage('silver-tabby-cat.webp'),
@@ -35,10 +34,9 @@ async function createAtlas() {
     // Draw images to atlas
     let y = 0;
     
-    // Row 1: Bichita
+    // Row 1: Bichita (using pose sprite for both pose and drag animations)
     ctx.drawImage(images.bichitaWalk, 0, y, spriteSize, spriteSize);
     ctx.drawImage(images.bichitaPose, spriteSize, y, spriteSize, spriteSize);
-    ctx.drawImage(images.bichitaDrag, spriteSize * 2, y, spriteSize, spriteSize);
     
     // Row 2: White cat
     y += spriteSize;
