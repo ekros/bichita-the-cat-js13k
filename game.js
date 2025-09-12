@@ -74,7 +74,7 @@ const catTypes = ["white", "tabby", "orange"];
 /** @constructor */
 class Cat {
     constructor(yPos, xPos, speed, type) {
-        this.y = Math.floor(Math.max(0, Math.random() * mainCanvasSize.y - 40)); // make sure there is no vertical overflow
+        this.y = Math.floor(Math.max(30, Math.random() * mainCanvasSize.y - 40)); // make sure there is no vertical overflow
         this.x = Math.floor(Math.random() * mainCanvasSize.x);
         this.speed = Math.random() < 0.5 ? -(Math.random() / 5) : Math.random() / 5;
         this.type = catTypes[Math.floor(Math.random() * catTypes.length)];
@@ -320,6 +320,17 @@ const restartGame = () => {
     gameInit();
 };
 
+const getRandomMotherText = () => {
+    const texts = [
+        "Have you seen my baby?",
+        "I'm so worried about Bichita.",
+        "Bichita is lost again!",
+        "I miss my baby so much.",
+        "Where could Bichita be?",
+    ];
+    return texts[Math.floor(Math.random() * texts.length)];
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 function gameInit()
 {
@@ -356,7 +367,12 @@ function gameUpdate()
             }
             if (!motherGaveGreetings) {
                 const pos = screenToWorld(vec2(getMotherInstance().x, getMotherInstance().y - 20));
-                startCatTalking("Please, bring my baby back!", pos, 5000);
+                const gamesPlayed = localStorage.getItem("gamesPlayed");
+                if (gamesPlayed > 1) {
+                    startCatTalking(getRandomMotherText(), pos, 5000);
+                } else {
+                    startCatTalking("Please, bring my baby back!", pos, 5000);
+                }
                 motherGaveGreetings = true;
             }
             if (mouseWasPressed(0))
