@@ -110,10 +110,11 @@ class Mother extends Cat {
 
 // Data & state
 let cats = [];
-let gameState = location.search.includes("next") ? GAME_STATE.RUNNING : GAME_STATE.TITLE;
+let gameState = GAME_STATE.TITLE;
 let catTalking; // { text, x, y }
 let motherGaveGreetings = false;
 let musicPlaying = false;
+let talkInterval;
 
 const initCats = numberOfCats => {
     const bichitaIndex = Math.floor(Math.random() * numberOfCats);
@@ -245,19 +246,39 @@ const incrementGamesPlayed = () => {
     localStorage.setItem("gamesPlayed", Number(localStorage.getItem("gamesPlayed")) + 1);
 }
 
+// Keep references to audio nodes so we can stop them
+let audioContext;
+let gainNode;
+let oscillators = [];
+
+const stopMusic = () => {
+    if (audioContext) {
+        oscillators.forEach(osc => {
+            try { osc.stop(); } catch(e) { /* ignore already stopped */ }
+        });
+        oscillators = [];
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+        musicPlaying = false;
+    }
+};
+
 const playMusic = () => {
+    stopMusic(); // Stop any playing music first
     const a = (notes, center, duration, decaystart, decayduration, interval, volume, waveform) => {
-        const A = new AudioContext();
-        const G = A.createGain();
-        G.connect(A.destination);
+        audioContext = new AudioContext();
+        gainNode = audioContext.createGain();
+        gainNode.connect(audioContext.destination);
+        oscillators = []; // Clear old oscillators
+        
         for (let i of notes) {
-            const O = A.createOscillator();
-            O.connect(G);
+            const O = audioContext.createOscillator();
+            oscillators.push(O); // Store reference
+            O.connect(gainNode);
             O.start(i[0] * interval);
             O.frequency.setValueAtTime(center * 1.06 ** (13 - i[1]), i[0] * interval);
             O.type = waveform;
-            G.gain.setValueAtTime(volume, i[0] * interval);
-            G.gain.setTargetAtTime(1e-5, i[0] * interval + decaystart, decayduration);
+            gainNode.gain.setValueAtTime(volume, i[0] * interval);
+            gainNode.gain.setTargetAtTime(1e-5, i[0] * interval + decaystart, decayduration);
             O.stop(i[0] * interval + duration);
         }
     };
@@ -265,7 +286,7 @@ const playMusic = () => {
         [
             [4,13],[4,10],[11,10],[7,10],[7,13],[11,13],[9,13],[13,13],[15,10],[16,14],[16,10],[18,10],[20,13],[20,10],[23,13],[23,10],[27,10],[27,13],[29,10],[31,13],[31,10],[32,13],[34,13],[36,10],[36,13],[39,10],[39,13],[41,13],[43,13],[45,13],[43,10],[60,10],[62,10],[47,10],[47,15],[48,10],[50,10],[52,13],[52,10],[55,13],[55,10],[57,10],[59,10],[59,13],[60,13],[25,13]
         ],
-        400, .19, .18, .005, .2, .1, ''
+        400, .19, .18, .005, .2, .05, ''
     );
     musicPlaying = true;
 }
@@ -289,6 +310,16 @@ const renderTitleScreen = () => {
         hsl(0,0,1), 6, hsl(0,0,0));
 }
 
+const restartGame = () => {
+    clearInterval(talkInterval);
+    cats = [];
+    catTalking = null;
+    motherGaveGreetings = false;
+    gameState = GAME_STATE.RUNNING;
+    musicPlaying = false;
+    gameInit();
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 function gameInit()
 {
@@ -300,7 +331,7 @@ function gameInit()
     initCats(getInitialCats().quantity);
     initSprites();
     // hint: every 30 seconds there is a chance of a short meow
-    setInterval(() => {
+    talkInterval = setInterval(() => {
         if (Math.random() < 0.5) {
             const pos = screenToWorld(vec2(getBichitaInstance().x, getBichitaInstance().y - 20));
             startCatTalking("Meow", pos, 2000);
@@ -375,7 +406,7 @@ function gameUpdate()
         case GAME_STATE.WIN:
             if (mouseWasPressed(0))
             {
-                location.href = "/?next"             
+                restartGame();             
             }
         break;
     }      
@@ -462,7 +493,6 @@ function gameRenderPost()
         drawTextScreen('Click anywhere to play again', 
         vec2(200, 20), 20,
         hsl(0,100,1), 6, hsl(0,0,0));
-        
     }
 }
 
