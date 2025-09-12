@@ -20,7 +20,8 @@ const dataFiles =
 [
     'sprites.webp',
     'grass.webp',
-    'favicon.png'
+    'favicon.png',
+    'bichita-cover.webp'
 ];
 
 console.log(`Building ${PROGRAM_NAME}...`);

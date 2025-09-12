@@ -37,10 +37,11 @@ const CAT_DENSITY_SETUPS = {
         quantity: 2000
     }
 }
-const INITIAL_SETUP = CAT_DENSITY_SETUPS.lowest;
+
 const GAME_STATE = {
-    RUNNING: 0,
-    WIN: 1
+    TITLE: 0,
+    RUNNING: 1,
+    WIN: 2
 };
 const BICHITA_SCALE = 0.7;
 
@@ -109,9 +110,10 @@ class Mother extends Cat {
 
 // Data & state
 let cats = [];
-let gameState = GAME_STATE.RUNNING;
+let gameState = location.search.includes("next") ? GAME_STATE.RUNNING : GAME_STATE.TITLE;
 let catTalking; // { text, x, y }
 let motherGaveGreetings = false;
+let musicPlaying = false;
 
 const initCats = numberOfCats => {
     const bichitaIndex = Math.floor(Math.random() * numberOfCats);
@@ -135,6 +137,7 @@ const initCats = numberOfCats => {
 const initSprites = () => {
     sprites.atlas = textureInfos[0].image;
     sprites.grass = textureInfos[1].image;
+    sprites.cover = textureInfos[2].image;
 }
 
 const checkMouseCollisionWithBichita = pos => {
@@ -242,6 +245,50 @@ const incrementGamesPlayed = () => {
     localStorage.setItem("gamesPlayed", Number(localStorage.getItem("gamesPlayed")) + 1);
 }
 
+const playMusic = () => {
+    const a = (notes, center, duration, decaystart, decayduration, interval, volume, waveform) => {
+        const A = new AudioContext();
+        const G = A.createGain();
+        G.connect(A.destination);
+        for (let i of notes) {
+            const O = A.createOscillator();
+            O.connect(G);
+            O.start(i[0] * interval);
+            O.frequency.setValueAtTime(center * 1.06 ** (13 - i[1]), i[0] * interval);
+            O.type = waveform;
+            G.gain.setValueAtTime(volume, i[0] * interval);
+            G.gain.setTargetAtTime(1e-5, i[0] * interval + decaystart, decayduration);
+            O.stop(i[0] * interval + duration);
+        }
+    };
+    a(
+        [
+            [4,13],[4,10],[11,10],[7,10],[7,13],[11,13],[9,13],[13,13],[15,10],[16,14],[16,10],[18,10],[20,13],[20,10],[23,13],[23,10],[27,10],[27,13],[29,10],[31,13],[31,10],[32,13],[34,13],[36,10],[36,13],[39,10],[39,13],[41,13],[43,13],[45,13],[43,10],[60,10],[62,10],[47,10],[47,15],[48,10],[50,10],[52,13],[52,10],[55,13],[55,10],[57,10],[59,10],[59,13],[60,13],[25,13]
+        ],
+        400, .19, .18, .005, .2, .1, ''
+    );
+    musicPlaying = true;
+}
+
+const renderTitleScreen = () => {
+    const baseX = mainCanvasSize.x/2 - 80;
+    const baseY = mainCanvasSize.y/2 - 80;
+    mainContext.drawImage(sprites.cover, baseX, baseY, 128, 128);
+    drawTextScreen('Bichita the Cat  -  Js13kGames 2025', 
+        vec2(baseX + 60, baseY + 140), 16,
+        hsl(0,0,1), 6, hsl(0,0,0));   
+     drawTextScreen('The young cat is lost! Help it find his mother!', 
+        vec2(baseX + 60, baseY + 180), 16,
+        hsl(0,0,1), 6, hsl(0,0,0));
+    drawTextScreen('To play, just find it and move it next to her mother using the mouse / touch', 
+        vec2(baseX + 60, baseY + 200), 16,
+        hsl(0,0,1), 6, hsl(0,0,0));
+    drawSprite(baseX + 64, baseY + 230, ...SPRITE_MAP.bichita.pose, false, BICHITA_SCALE);
+    drawTextScreen('Click or tap to continue', 
+        vec2(baseX + 60, baseY + 320), 16,
+        hsl(0,0,1), 6, hsl(0,0,0));
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 function gameInit()
 {
@@ -259,14 +306,23 @@ function gameInit()
             startCatTalking("Meow", pos, 2000);
         }
     }, 30000);
-
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 function gameUpdate()
 {
     switch (gameState) {
+        case GAME_STATE.TITLE:
+            if (mouseWasPressed(0))
+            {
+                gameState = GAME_STATE.RUNNING;
+                playMusic();
+            }
+        break;
         case GAME_STATE.RUNNING:
+            if (!musicPlaying) {
+                playMusic(); // workaround to allow music to be played
+            }
             if (!motherGaveGreetings) {
                 const pos = screenToWorld(vec2(getMotherInstance().x, getMotherInstance().y - 20));
                 startCatTalking("Please, bring my baby back!", pos, 5000);
@@ -319,7 +375,7 @@ function gameUpdate()
         case GAME_STATE.WIN:
             if (mouseWasPressed(0))
             {
-                location.reload();                
+                location.href = "/?next"             
             }
         break;
     }      
@@ -334,69 +390,79 @@ function gameUpdatePost()
 ///////////////////////////////////////////////////////////////////////////////
 function gameRender()
 {
-    // render grass background
-    const grass = sprites.grass;
-    if (grass) {
-        const pattern = mainContext.createPattern(grass, 'repeat');
-        mainContext.fillStyle = pattern;
-        mainContext.fillRect(0, 0, mainCanvasSize.x, mainCanvasSize.y);
-    }
-
-    // render cats
-    cats.forEach(cat => {
-        if (cat.constructor.name === "Bichita") {
-            if (cat.isDragging) {
-                const coords = worldToScreen(mousePos);
-                drawSprite(coords.x, coords.y, ...SPRITE_MAP.bichita.drag, false, BICHITA_SCALE);
-            } else {
-                if (!cat.isWalking) {
-                    drawSprite(cat.x, cat.y, ...SPRITE_MAP.bichita.pose, false, BICHITA_SCALE);
+    switch (gameState) {
+        case GAME_STATE.TITLE:
+            renderTitleScreen();
+        break;
+        case GAME_STATE.RUNNING:
+        case GAME_STATE.WIN:
+            // render grass background
+            const grass = sprites.grass;
+            if (grass) {
+                const pattern = mainContext.createPattern(grass, 'repeat');
+                mainContext.fillStyle = pattern;
+                mainContext.fillRect(0, 0, mainCanvasSize.x, mainCanvasSize.y);
+            }
+        
+            // render cats
+            cats.forEach(cat => {
+                if (cat.constructor.name === "Bichita") {
+                    if (cat.isDragging) {
+                        const coords = worldToScreen(mousePos);
+                        drawSprite(coords.x, coords.y, ...SPRITE_MAP.bichita.drag, false, BICHITA_SCALE);
+                    } else {
+                        if (!cat.isWalking) {
+                            drawSprite(cat.x, cat.y, ...SPRITE_MAP.bichita.pose, false, BICHITA_SCALE);
+                        } else {
+                            drawSprite(cat.x, cat.y, ...SPRITE_MAP.bichita.walk, cat.speed < 0, BICHITA_SCALE);
+                        }
+                    }
+                } else if (cat.constructor.name === "Mother") {
+                    // Mother uses same sprites as Bichita
+                    drawSprite(cat.x, cat.y, ...SPRITE_MAP.bichita.walk, cat.speed < 0);
                 } else {
-                    drawSprite(cat.x, cat.y, ...SPRITE_MAP.bichita.walk, cat.speed < 0, BICHITA_SCALE);
+                    const spriteCoords = SPRITE_MAP[cat.type] || SPRITE_MAP.white;
+                    if (!cat.isWalking) {
+                        drawSprite(cat.x, cat.y, ...spriteCoords.pose, cat.speed < 0);
+                    } else {
+                        drawSprite(cat.x, cat.y, ...spriteCoords.walk, cat.speed < 0);
+                    }
                 }
-            }
-        } else if (cat.constructor.name === "Mother") {
-            // Mother uses same sprites as Bichita
-            drawSprite(cat.x, cat.y, ...SPRITE_MAP.bichita.walk, cat.speed < 0);
-        } else {
-            const spriteCoords = SPRITE_MAP[cat.type] || SPRITE_MAP.white;
-            if (!cat.isWalking) {
-                drawSprite(cat.x, cat.y, ...spriteCoords.pose, cat.speed < 0);
-            } else {
-                drawSprite(cat.x, cat.y, ...spriteCoords.walk, cat.speed < 0);
-            }
-        }
-    });
+            });
+        break;
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 function gameRenderPost()
 {
-    // draw to overlay canvas for hud rendering
-    drawTextScreen('Bichita the Cat', 
-        vec2(40, mainCanvasSize.y - 10), 10,   // position, size
-        hsl(0,0,1), 6, hsl(0,0,0));         // color, outline size and color
+    if (gameState !== GAME_STATE.TITLE) {
+        // draw to overlay canvas for hud rendering
+        drawTextScreen('Bichita the Cat', 
+            vec2(40, mainCanvasSize.y - 10), 10,   // position, size
+            hsl(0,0,1), 6, hsl(0,0,0));         // color, outline size and color
+         // draw cat talking
+        if (catTalking) {
+            const pos = worldToScreen(catTalking.pos);
+            pos.y -= 10;
+            // float effect
+            catTalking.pos.y += 0.001;
+            drawTextScreen(catTalking.text,
+                pos, 20,
+                hsl(0,0,1), 6, hsl(0,0,0));
+        }
+    }
     // draw thank you message
     if (gameState === GAME_STATE.WIN) {
         const {x, y} = getBichitaInstance();
         drawTextScreen('Thank you!', 
         vec2(x, y - 20), 20,
-        hsl(0,0,1), 6, hsl(0,0,0));  
+        hsl(0,0,1), 6, hsl(0,0,0));
         
         drawTextScreen('Click anywhere to play again', 
         vec2(200, 20), 20,
-        hsl(0,100,1), 6, hsl(0,0,0));  
-       
-    }
-    // draw cat talking
-    if (catTalking) {
-        const pos = worldToScreen(catTalking.pos);
-        pos.y -= 10;
-        // float effect
-        catTalking.pos.y += 0.001;
-        drawTextScreen(catTalking.text,
-            pos, 20,
-            hsl(0,0,1), 6, hsl(0,0,0));
+        hsl(0,100,1), 6, hsl(0,0,0));
+        
     }
 }
 
@@ -405,5 +471,6 @@ function gameRenderPost()
 engineInit(gameInit, gameUpdate, gameUpdatePost, gameRender, gameRenderPost, 
     [
         'sprites.webp',
-        'grass.webp'
+        'grass.webp',
+        'bichita-cover.webp'
     ]);
