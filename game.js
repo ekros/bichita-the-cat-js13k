@@ -12,6 +12,8 @@
 
 // show the LittleJS splash screen
 setShowSplashScreen(false);
+// enable touch
+setTouchInputEnable(true);
 
 // constants
 const CAT_DENSITY_SETUPS = {
@@ -116,6 +118,38 @@ let motherGaveGreetings = false;
 let musicPlaying = false;
 let talkInterval;
 
+const getScaleForDevice = () => {
+    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
+    if (isTouch && mainCanvasSize.x <= 800) {
+        // mobile
+        return {
+            catMultiplier: 0.25,
+            catScale: 1.75
+        }
+    } else if (isTouch && mainCanvasSize.x <= 1200) {
+        // tablet
+        return {
+            catMultiplier: 0.5,
+            catScale: 1.5
+        }
+    } else if (!isTouch && mainCanvasSize.x >= 1920) {
+        // desktop bigger than 1080p
+        return {
+            catMultiplier: 1.5,
+            catScale: 1
+        }
+    } else {
+        // desktop up to 1080p
+        return {
+            catMultiplier: 1,
+            catScale: 1
+        }
+    }
+}
+
+const TOUCH_DRAGGING_OFFSET_X = Math.floor(-20 * getScaleForDevice().catScale);
+const TOUCH_DRAGGING_OFFSET_Y = -120; // when dragging on touch devices, offset the sprite a bit to see where we are dragging
+
 const initCats = numberOfCats => {
     const bichitaIndex = Math.floor(Math.random() * numberOfCats);
     const motherIndex = Math.floor(Math.random() * numberOfCats); // ! TODO: potential index collision
@@ -146,21 +180,25 @@ const checkMouseCollisionWithBichita = pos => {
     let collided = false;
     const newCats = structuredClone(cats);
     const reversedCats = newCats.reverse(); // the ones in the front go first
+    const finalSpriteSize = SPRITE_SIZE * BICHITA_SCALE * getScaleForDevice().catScale;
     reversedCats.forEach(rc => {
-        if (rc.isBichita && Math.abs(rc.x - coords.x) < 15 && Math.abs(rc.y - coords.y) < 15) {
-            collided = true;
-        }
-    });
-    return collided;
-}
-
-const checkMouseCollisionWithMother = pos => {
-    let collided = false;
+        if (rc.isBichita && coords.x - rc.x > 0 && coords.x - rc.x < finalSpriteSize && 
+            coords.y - rc.y > 0 && coords.y - rc.y < finalSpriteSize) {
+                collided = true;
+            }
+        });
+        return collided;
+    }
+    
+    const checkMouseCollisionWithMother = pos => {
+        let collided = false;
         const coords = worldToScreen(pos);
         const newCats = structuredClone(cats);
         const reversedCats = newCats.reverse(); // the ones in the front go first
+        const finalSpriteSize = SPRITE_SIZE * getScaleForDevice().catScale;
         reversedCats.forEach(rc => {
-            if (rc.isMother && Math.abs(rc.x - coords.x) < 18 && Math.abs(rc.y - coords.y) < 18) {
+            if (rc.isMother && coords.x - rc.x > 0 && coords.x - rc.x < finalSpriteSize && 
+                coords.y - rc.y > 0 && coords.y - rc.y < finalSpriteSize) {
                 collided = true;
             }
         });
@@ -172,8 +210,10 @@ const checkMouseCollisionWithOtherCats = pos => {
         const coords = worldToScreen(pos);
         const newCats = structuredClone(cats);
         const reversedCats = newCats.reverse(); // the ones in the front go first
+        const finalSpriteSize = SPRITE_SIZE * getScaleForDevice().catScale;
         reversedCats.forEach(rc => {
-            if (!rc.isMother && !rc.isBichita && Math.abs(rc.x - coords.x) < 18 && Math.abs(rc.y - coords.y) < 18) {
+            if (!rc.isMother && !rc.isBichita && coords.x - rc.x > 0 && coords.x - rc.x < finalSpriteSize && 
+                            coords.y - rc.y > 0 && coords.y - rc.y < finalSpriteSize) {
                 collided = true;
             }
         });
@@ -262,6 +302,7 @@ const stopMusic = () => {
     }
 };
 
+// music, created with https://xem.github.io/miniOrchestra/
 const playMusic = () => {
     stopMusic(); // Stop any playing music first
     const a = (notes, center, duration, decaystart, decayduration, interval, volume, waveform) => {
@@ -282,29 +323,40 @@ const playMusic = () => {
             O.stop(i[0] * interval + duration);
         }
     };
-    a(
-        [
-            [4,13],[4,10],[11,10],[7,10],[7,13],[11,13],[9,13],[13,13],[15,10],[16,14],[16,10],[18,10],[20,13],[20,10],[23,13],[23,10],[27,10],[27,13],[29,10],[31,13],[31,10],[32,13],[34,13],[36,10],[36,13],[39,10],[39,13],[41,13],[43,13],[45,13],[43,10],[60,10],[62,10],[47,10],[47,15],[48,10],[50,10],[52,13],[52,10],[55,13],[55,10],[57,10],[59,10],[59,13],[60,13],[25,13]
-        ],
-        400, .19, .18, .005, .2, .05, ''
-    );
+    const randomTune = Math.floor(Math.random() * 3);
+    switch(randomTune) {
+        case 0:
+            a(
+            [
+                [4,13],[4,10],[11,10],[7,10],[7,13],[11,13],[9,13],[13,13],[15,10],[16,14],[16,10],[18,10],[20,13],[20,10],[23,13],[23,10],[27,10],[27,13],[29,10],[31,13],[31,10],[32,13],[34,13],[36,10],[36,13],[39,10],[39,13],[41,13],[43,13],[45,13],[43,10],[60,10],[62,10],[47,10],[47,15],[48,10],[50,10],[52,13],[52,10],[55,13],[55,10],[57,10],[59,10],[59,13],[60,13],[25,13]
+            ],
+            400, .19, .18, .005, .2, .05, ''
+            );
+        break;
+        case 1:
+            a([[6,16],[1,14],[1,17],[4,17],[4,14],[8,14],[10,15],[12,14],[14,14],[14,17],[17,14],[17,17],[11,14],[19,16],[21,14],[23,15],[24,16],[25,16],[27,17],[27,14],[29,15],[29,12],[31,17],[31,14],[34,17],[34,14],[37,17],[37,14],[39,16],[41,14],[43,15],[44,14],[45,14],[47,14],[47,17],[49,14],[49,17],[51,14],[51,11],[54,14],[54,11],[56,13],[58,11],[60,12],[61,11],[62,11]],400,.19,.18,.005,.2,.1,'triangle');
+        break;
+        case 2:
+            a([[0,3],[2,3],[4,3],[6,3],[8,3],[2,6],[3,6],[4,6],[5,6],[6,6],[7,6],[8,6],[9,7],[10,7],[11,7],[12,7],[13,7],[14,7],[15,7],[10,3],[12,3],[14,3],[16,8],[17,8],[18,8],[19,8],[20,8],[21,8],[22,8],[16,3],[18,3],[18,5],[16,5],[20,5],[20,3],[22,5],[22,3],[24,3],[24,10],[26,3],[26,10],[28,3],[28,10],[24,5],[26,5],[28,5],[30,3],[32,3],[31,3],[33,3],[34,3],[35,3],[30,6],[31,6],[32,6],[33,6],[34,6],[35,6],[37,4],[38,4],[39,4],[40,4],[41,4],[42,4],[37,7],[38,7],[39,7],[40,7],[41,7],[42,7],[44,5],[45,5],[46,5],[47,5],[48,5],[49,5],[44,8],[45,8],[46,8],[47,8],[48,8],[49,8],[51,3],[53,3],[55,3],[51,5],[51,10],[53,10],[55,10],[53,5],[55,5],[57,3],[58,3],[59,3],[60,4],[61,4],[62,4],[57,6],[58,6],[59,6],[60,7],[61,7],[62,7],[64,4],[65,4],[66,4],[67,5],[68,5],[69,5],[64,7],[65,7],[66,7],[67,8],[68,8],[69,8],[71,5],[72,5],[73,5],[71,8],[72,8],[73,8],[74,9],[75,9],[76,9],[78,3],[78,5],[78,10],[80,3],[80,5],[80,10],[82,3],[83,3],[82,5],[83,5],[82,10],[83,10],[24,6],[26,6],[28,6],[51,6],[53,6],[55,6],[78,6],[80,6],[82,6],[83,6],[74,5],[75,5],[76,5]],400,.19,.18,.005,.2,.1,'');
+        break;
+    }
     musicPlaying = true;
 }
 
 const renderTitleScreen = () => {
     const baseX = mainCanvasSize.x/2 - 80;
-    const baseY = mainCanvasSize.y/2 - 80;
-    mainContext.drawImage(sprites.cover, baseX, baseY, 128, 128);
-    drawTextScreen('Bichita the Cat  -  Js13kGames 2025', 
+    const baseY = mainCanvasSize.y/2 - 100;
+    mainContext.drawImage(sprites.cover, baseX, baseY - 20, 128, 128);
+    drawTextScreen('Bichita the Cat  -  Js13kGames 2025\n Director\'s Cut\n by Eric Ros', 
         vec2(baseX + 60, baseY + 140), 16,
-        hsl(0,0,1), 6, hsl(0,0,0));   
+        hsl(0,0,0), 1, hsl(0,0,0));   
      drawTextScreen('The young cat is lost! Help it find his mother!', 
         vec2(baseX + 60, baseY + 180), 16,
         hsl(0,0,1), 6, hsl(0,0,0));
-    drawTextScreen('To play, just find it and move it next to her mother using the mouse / touch', 
-        vec2(baseX + 60, baseY + 200), 16,
+    drawTextScreen('To play, just find it and move it next \nto her mother using the mouse / touch', 
+        vec2(baseX + 60, baseY + 210), 16,
         hsl(0,0,1), 6, hsl(0,0,0));
-    drawSprite(baseX + 64, baseY + 230, ...SPRITE_MAP.bichita.pose, false, BICHITA_SCALE);
+    drawSprite(baseX + 64, baseY + 230, ...SPRITE_MAP.bichita.pose, false, BICHITA_SCALE * getScaleForDevice().catScale);
     drawTextScreen('Click or tap to continue', 
         vec2(baseX + 60, baseY + 320), 16,
         hsl(0,0,1), 6, hsl(0,0,0));
@@ -331,6 +383,7 @@ const getRandomMotherText = () => {
     return texts[Math.floor(Math.random() * texts.length)];
 };
 
+
 ///////////////////////////////////////////////////////////////////////////////
 function gameInit()
 {
@@ -339,7 +392,7 @@ function gameInit()
         localStorage.setItem("gamesPlayed", 1);
     }
     mainCanvas.style.background = "white";
-    initCats(getInitialCats().quantity);
+    initCats(Math.floor(getInitialCats().quantity*getScaleForDevice().catMultiplier));
     initSprites();
     // hint: every 30 seconds there is a chance of a short meow
     talkInterval = setInterval(() => {
@@ -456,23 +509,27 @@ function gameRender()
                 if (cat.constructor.name === "Bichita") {
                     if (cat.isDragging) {
                         const coords = worldToScreen(mousePos);
-                        drawSprite(coords.x, coords.y, ...SPRITE_MAP.bichita.drag, false, BICHITA_SCALE);
+                        if (isTouchDevice) {
+                            drawSprite(coords.x + TOUCH_DRAGGING_OFFSET_X, coords.y + TOUCH_DRAGGING_OFFSET_Y, ...SPRITE_MAP.bichita.drag, false, BICHITA_SCALE * getScaleForDevice().catScale * 2);
+                        } else {
+                            drawSprite(coords.x, coords.y, ...SPRITE_MAP.bichita.drag, false, BICHITA_SCALE * getScaleForDevice().catScale);
+                        }
                     } else {
                         if (!cat.isWalking) {
-                            drawSprite(cat.x, cat.y, ...SPRITE_MAP.bichita.pose, false, BICHITA_SCALE);
+                            drawSprite(cat.x, cat.y, ...SPRITE_MAP.bichita.pose, false, BICHITA_SCALE * getScaleForDevice().catScale);
                         } else {
-                            drawSprite(cat.x, cat.y, ...SPRITE_MAP.bichita.walk, cat.speed < 0, BICHITA_SCALE);
+                            drawSprite(cat.x, cat.y, ...SPRITE_MAP.bichita.walk, cat.speed < 0, BICHITA_SCALE * getScaleForDevice().catScale);
                         }
                     }
                 } else if (cat.constructor.name === "Mother") {
                     // Mother uses same sprites as Bichita
-                    drawSprite(cat.x, cat.y, ...SPRITE_MAP.bichita.walk, cat.speed < 0);
+                    drawSprite(cat.x, cat.y, ...SPRITE_MAP.bichita.walk, cat.speed < 0, getScaleForDevice().catScale);
                 } else {
                     const spriteCoords = SPRITE_MAP[cat.type] || SPRITE_MAP.white;
                     if (!cat.isWalking) {
-                        drawSprite(cat.x, cat.y, ...spriteCoords.pose, cat.speed < 0);
+                        drawSprite(cat.x, cat.y, ...spriteCoords.pose, cat.speed < 0, getScaleForDevice().catScale);
                     } else {
-                        drawSprite(cat.x, cat.y, ...spriteCoords.walk, cat.speed < 0);
+                        drawSprite(cat.x, cat.y, ...spriteCoords.walk, cat.speed < 0, getScaleForDevice().catScale);
                     }
                 }
             });

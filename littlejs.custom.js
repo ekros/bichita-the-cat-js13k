@@ -2300,7 +2300,7 @@ function touchInputInit()
     function handleTouchDefault(e)
     {
         // fix stalled audio requiring user interaction
-        if (soundEnable && !headlessMode && audioContext && audioContext.state != 'running')
+        if (!headlessMode && audioContext && audioContext.state != 'running')
             audioContext.resume();
 
         // check if touching and pass to mouse events
@@ -2311,7 +2311,7 @@ function touchInputInit()
             // set event pos and pass it along
             const p = vec2(e.touches[0].clientX, e.touches[0].clientY);
             mousePosScreen = mouseEventToScreen(p);
-            wasTouching ? isUsingGamepad = touchGamepadEnable : inputData[0][button] = 3;
+            wasTouching ? isUsingGamepad = false : inputData[0][button] = 3;
         }
         else if (wasTouching)
             inputData[0][button] = inputData[0][button] & 2 | 4;
